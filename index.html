@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>偵探破案：小數除法線索</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --panel: #1e293b;
+    --accent: #38bdf8;
+    --danger: #f87171;
+    --success: #4ade80;
+    --warn: #fbbf24;
+    --text: #f8fafc;
+    --muted: #94a3b8;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+  }
+
+  #app {
+    width: 100%;
+    max-width: 760px;
+  }
+
+  .screen {
+    display: none;
+    animation: fadeIn 0.4s ease;
+  }
+  .screen.active { display: block; }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid #334155;
+    border-radius: 16px;
+    padding: 32px 28px;
+    box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3);
+  }
+
+  h1 { font-size: 2rem; margin-bottom: 12px; color: var(--accent); text-align: center; letter-spacing: 2px; }
+  h2 { font-size: 1.35rem; margin-bottom: 16px; color: var(--text); }
+  p { line-height: 1.6; color: var(--muted); text-align: center; margin-bottom: 24px; }
+
+  .btn {
+    background: var(--accent);
+    color: #000;
+    border: none;
+    padding:lor: var(--muted); text-align: center; margin-bottom: 24px; }
+
+  .btn {
+    background: var(--accent);
+    color: #000;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: transform .15s, box-shadow .15s;
+    width: 100%;
+  }
+  .btn:hover { transform: translateY(-2px); box-shadow: 0 0 15px var(--accent); }
+  .btn:active { transform: translateY(0); }
+  .btn:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+
+  .btn-danger { background: var(--danger); color: #fff; }
+  .btn-danger:hover { box-shadow: 0 0 15px var(--danger); }
+  .btn-success { background: var(--success); color: #000; }
+  .btn-success:hover { box-shadow: 0 0 15px var(--success); }
+  .btn-outline { background: transparent; color: var(--accent); border: 2px solid var(--accent); }
+  .btn-outline:hover { box-shadow: 0 0 15px var(--accent); color: #000; background: var(--accent); }
+
+  /* HUD */
+  .hud {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .stat {
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 10px;
+    padding: 10px 14px;
+    text-align: center;
+    flex: 1;
+    min-width: 120px;
+  }
+  .stat .label { font-size: 0.85rem; color: var(--muted); display: block; }
+  .stat .value { font-size: 1.5rem; font-weight: bold; color: var(--accent); }
+  .stat.warn .value { color: var(--warn); }
+  .stat.danger .value { color: var(--danger); }
+
+  /* Clues */
+  .clues { display: grid; grid-template-columns: 1fr; gap: 14px; }
+  @media (min-width: 520px) { .clues { grid-template-columns: 1fr 1fr; } }
+
+  .clue-card {
+    background: #0f172a;
+    border: 2px solid #334155;
+    border-radius: 14px;
+    padding: 20px 18px;
+    position: relative;
+    transition: border-color .2s, transform .2s;
+  }
+  .clue-card.solved {
+    border-color: var(--success);
+    background: linear-gradient(135deg, #064e3b 0%, #0f172a 100%);
+  }
+  .clue-card.wrong { border-color: var(--danger); animation: shake .4s; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+
+  .clue-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .clue-tag { font-size: 0.8rem; padding: 4px 10px; border-radius: 20px; background: #334155; color: var(--muted); }
+  .clue-tag.solved { background: var(--success); color: #000; font-weight: bold; }
+
+  .clue-expr { font-size: 1.5rem; font-weight: bold; color: var(--accent); text-align: center; margin: 10px 0 18px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+
+  .input-group { display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap; }
+  input.clue-input {
+    width: 110px;
+    padding: 10px 12px;
+    font-size: 1.2rem;
+    text-align: center;
+    border-radius: 8px;
+    border: 1px solid #475569;
+    background: #0f172a;
+    color: var(--text);
+  }
+  input.clue-input:focus { outline: none; border-color: var(--accent); }
+
+  .clue-btn { width: auto; padding: 10px 18px; font-size: 0.95rem; }
+
+  .digit-badge {
+    position: absolute; top: 14px; right: 16px;
+    width: 34px; height: 34px; border-radius: 50%;
+    background: var(--panel); color: var(--text);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: bold; font-size: 1.1rem; border: 1px solid #334155;
+  }
+  .clue-card.solved .digit-badge { background: var(--success); color: #000; border-color: var(--success); }
+
+  .clue-result { margin-top: 14px; text-align: center; font-size: 0.95rem; color: var(--muted); min-height: 1.4em; }
+
+  /* Safe */
+  .safe-box {
+    border: 4px double #fbbf24;
+    border-radius: 16px;
+    padding: 30px 24px;
+    text-align: center;
+    background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+    margin-bottom: 24px;
+  }
+  .safe-display {
+    font-size: 3rem; font-weight: bold; letter-spacing: 8px;
+    color: var(--warn); font-family: ui-monospace, monospace;
+    background: #000; border: 2px solid #334155; border-radius: 10px;
+    padding: 14px 20px; display: inline-block; margin-bottom: 16px;
+    box-shadow: 0 0 20px rgba(251,191,36,.35);
+  }
+  .safe-hint { color: var(--muted); font-size: 0.95rem; margin-bottom: 20px; }
+
+  input.safe-input {
+    width: 60px; padding: 12px; font-size: 1.6rem; text-align: center;
+    border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: var(--text);
+  }
+
+  .msg { margin-top: 16px; font-weight: bold; min-height: 1.6em; text-align: center; }
+
+  /* Endings */
+  .ending { text-align: center; }
+  .ending h2 { margin-bottom: 10px; }
+  .ending p { margin-bottom: 24px; }
+  .badge {
+    display: inline-block; padding: 8px 16px; border-radius: 8px; font-weight: bold;
+    margin-bottom: 24px;
+  }
+  .badge-win { background: var(--success); color: #000; }
+  .badge-lose { background: var(--danger); color: #fff; }
+
+  .footer { text-align: center; color: var(--muted); font-size: 0.85rem; margin-top: 14px; }
+
+  .hint-box {
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 10px;
+    padding: 14px;
+    font-size: 0.9rem;
+    color: var(--muted);
+    margin-top: 18px;
+    line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- 開始畫面 -->
+  <div id="screen-start" class="screen active card">
+    <h1>🔍 偵探破案</h1>
+    <h2>小數除法線索追兇</h2>
+    <p>博物館昨晚發生珍寶失竊案，現場留下四張神秘紙條。</p>
+    <p>每張紙條上都有一道「小數除法」算式。<br>
+    <strong>算出每道題的商，取「個位數字」組合成 4 位數密碼，</strong><br>
+    開啟保險箱，就能找出真兇！</p>
+    <p>⚠️ 盜賊正在逃跑，請在限時內破案。</p>
+    <div class="hint-box">
+      💡 遊戲提示：每次開始都會隨機抽出 4 道題目，題目不固定，請仔細計算。
+    </div>
+    <button class="btn btn-success" onclick="startGame()">開始破案</button>
+    <div class="footer">國小六年級 · 小數除法學習遊戲</div>
+  </div>
+
+  <!-- 遊戲主畫面（線索頁） -->
+  <div id="screen-game" class="screen card">
+    <div class="hud">
+      <div class="stat">
+        <span class="label">剩餘時間</span>
+        <span class="value" id="timer">05:00</span>
+      </div>
+      <div class="stat">
+        <span class="label">線索進度</span>
+        <span class="value" id="progress">0 / 4</span>
+      </div>
+      <div class="stat danger">
+        <span class="label">錯誤次數</span>
+        <span class="value" id="mistakes">0</span>
+      </div>
+    </div>
+
+    <h2>犯罪現場證物</h2>
+    <p>請分別計算四張紙條上的除法算式，輸入「完整商」驗證。</p>
+
+    <div class="clues" id="clues-container"></div>
+
+    <div style="display:flex; gap:10px; justify-content:center; margin-top:16px; flex-wrap:wrap;">
+      <button class="btn btn-success" onclick="goToSafe()">前往保險箱解密</button>
+      <button class="btn btn-outline" onclick="backToStart()">回到開始</button>
+    </div>
+
+    <div class="msg" id="game-msg"></div>
+    <button class="btn btn-danger" onclick="endGame(false)">放棄破案（投降）</button>
+    <div class="footer">被除數 ≤ 100，除數 ≥ 0.001 且 ≤ 99 · 輸入完整商，取個位組合密碼</div>
+  </div>
+
+  <!-- 保險箱畫面（解密頁） -->
+  <div id="screen-safe" class="screen card">
+    <h2>🗄️ 保險箱鎖定中</h2>
+    <p>請輸入 4 位數密碼開啟保險箱。</p>
+
+    <div class="safe-box">
+      <div class="safe-display" id="safe-display">_ _ _ _</div>
+      <div class="safe-hint">提示：密碼 = 四張紙條商的「個位數字」依序組合</div>
+
+      <div style="display:flex; gap:8px; justify-content:center; margin-bottom:14px;">
+        <input type="text" class="safe-input" maxlength="1" id="safe-1" oninput="moveSafeFocus(this, 2)">
+        <input type="text" class="safe-input" maxlength="1" id="safe-2" oninput="moveSafeFocus(this, 3)" onkeydown="handleSafeKeydown(event, this, 2)">
+        <input type="text" class="safe-input" maxlength="1" id="safe-3" oninput="moveSafeFocus(this, 4)" onkeydown="handleSafeKeydown(event, this, 3)">
+        <input type="text" class="safe-input" maxlength="1" id="safe-4" onkeydown="handleSafeKeydown(event, this, 4)">
+      </div>
+
+      <div style="display:flex; gap:10px; justify-content:center; margin-bottom:14px; flex-wrap:wrap;">
+        <button class="btn btn-success" onclick="checkSafe()">開啟保險箱</button>
+        <button class="btn btn-outline" onclick="backToGame()">回到現場</button>
+      </div>
+
+      <div class="msg" id="safe-msg"></div>
+    </div>
+
+    <button class="btn btn-danger" onclick="endGame(false)">放棄破案（投降）</button>
+  </div>
+
+  <!-- 勝利畫面 -->
+  <div id="screen-win" class="screen card ending">
+    <div class="badge badge-win">🎉 破案成功！</div>
+    <h2>真兇已落網</h2>
+    <p id="win-text"></p>
+    <p>用時：<span id="win-time"></span> &nbsp;|&nbsp; 錯誤：<span id="win-mistakes"></span> 次</p>
+    <button class="btn btn-success" onclick="location.reload()">再玩一次</button>
+  </div>
+
+  <!-- 失敗畫面 -->
+  <div id="screen-lose" class="screen card ending">
+    <div class="badge badge-lose">🚨 破案失敗</div>
+    <h2>盜賊逃跑了！</h2>
+    <p id="lose-text"></p>
+    <button class="btn btn-danger" onclick="location.reload()">重新開始</button>
+  </div>
+
+</div>
+
+<script>
+/* ========== 題庫（共 35 題）========== */
+// 規則：被除數 ≤ 100，除數 ≥ 0.001 且 ≤ 99，商皆為整數
+const clueBank = [
+  // 一位小數 ÷ 一位小數
+  { expr: "9.6 ÷ 0.8",  answer: 12,  digit: 2 },
+  { expr: "6.3 ÷ 0.7",  answer: 9,   digit: 9 },
+  { expr: "8.4 ÷ 0.6",  answer: 14,  digit: 4 },
+  { expr: "7.2 ÷ 0.9",  answer: 8,   digit: 8 },
+  { expr: "7.2 ÷ 0.8",  answer: 9,   digit: 9 },
+  { expr: "5.6 ÷ 0.7",  answer: 8,   digit: 8 },
+  { expr: "10.8 ÷ 0.9", answer: 12,  digit: 2 },
+  { expr: "3.6 ÷ 0.4",  answer: 9,   digit: 9 },
+
+  // 整數 ÷ 小數
+  { expr: "15 ÷ 0.5",   answer: 30,  digit: 0 },
+  { expr: "18 ÷ 0.9",   answer: 20,  digit: 0 },
+  { expr: "10 ÷ 0.5",   answer: 20,  digit: 0 },
+  { expr: "36 ÷ 0.6",   answer: 60,  digit: 0 },
+  { expr: "9 ÷ 0.3",    answer: 30,  digit: 0 },
+  { expr: "21 ÷ 0.7",   answer: 30,  digit: 0 },
+
+  // 小數 ÷ 小數（除數兩位小數）
+  { expr: "0.63 ÷ 0.09", answer: 7,  digit: 7 },
+  { expr: "0.48 ÷ 0.08", answer: 6,  digit: 6 },
+  { expr: "9.6 ÷ 0.08",  answer: 120, digit: 0 },
+  { expr: "4.8 ÷ 0.08",  answer: 60,  digit: 0 },
+  { expr: "0.81 ÷ 0.09", answer: 9,  digit: 9 },
+  { expr: "0.75 ÷ 0.15", answer: 5,  digit: 5 },
+
+  // 被除數小於 1
+  { expr: "0.72 ÷ 0.08", answer: 9,  digit: 9 },
+  { expr: "0.84 ÷ 0.12", answer: 7,  digit: 7 },
+  { expr: "0.36 ÷ 0.06", answer: 6,  digit: 6 },
+  { expr: "0.96 ÷ 0.16", answer: 6,  digit: 6 },
+  { expr: "0.9 ÷ 0.3",   answer: 3,  digit: 3 },
+
+  // 除數大於 1（小數÷小數或整數÷小數）
+  { expr: "4.8 ÷ 1.2",   answer: 4,   digit: 4 },
+  { expr: "14.4 ÷ 1.2",  answer: 12,  digit: 2 },
+  { expr: "24 ÷ 1.5",    answer: 16,  digit: 6 },
+  { expr: "36 ÷ 1.8",    answer: 20,  digit: 0 },
+  { expr: "9.6 ÷ 1.6",   answer: 6,   digit: 6 },
+  { expr: "7.5 ÷ 2.5",   answer: 3,   digit: 3 },
+
+  // 其他變體（補足個位數字多樣性）
+  { expr: "1.5 ÷ 0.3",   answer: 5,   digit: 5 },
+  { expr: "3.5 ÷ 0.7",   answer: 5,   digit: 5 },
+  { expr: "12.5 ÷ 0.5",  answer: 25,  digit: 5 },
+  { expr: "1.1 ÷ 0.1",   answer: 11,  digit: 1 },
+  { expr: "2.2 ÷ 0.2",   answer: 11,  digit: 1 },
+  { expr: "2.4 ÷ 0.8",   answer: 3,   digit: 3 },
+  { expr: "1.5 ÷ 0.5",   answer: 3,   digit: 3 },
+];
+
+const CULPRIT = "「夜貓黨」成員 林小美";
+
+let selectedClues = [];   // 本局隨機抽取的 4 題
+let password = "";        // 本局正確密碼
+let timeLeft = 300;       // 5 分鐘
+let timerId = null;
+let mistakes = 0;
+let solvedFlags = [false, false, false, false];
+let solvedCount = 0;
+let startTime = 0;
+
+/* ========== 工具函數 ========== */
+function shuffle(array) {
+  const arr = array.slice();
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+/* ========== 開始遊戲 ========== */
+function startGame() {
+  timeLeft = 300;
+  mistakes = 0;
+  solvedCount = 0;
+  solvedFlags = [false, false, false, false];
+  startTime = Date.now();
+
+  // 隨機抽 4 題不重複
+  selectedClues = shuffle(clueBank).slice(0, 4);
+  password = selectedClues.map(c => c.digit).join("");
+
+  document.getElementById("screen-start").classList.remove("active");
+  document.getElementById("screen-game").classList.add("active");
+
+  renderClues();
+  updateHUD();
+  startTimer();
+}
+
+function renderClues() {
+  const container = document.getElementById("clues-container");
+  container.innerHTML = selectedClues.map((c, i) => `
+    <div class="clue-card" id="clue-${c.expr.replace(/[^a-zA-Z0-9]/g, '_')}-${i}">
+      <div class="clue-header">
+        <span class="clue-tag" id="tag-${i}">線索 ${i + 1} / 4</span>
+        <div class="digit-badge" id="badge-${i}">?</div>
+      </div>
+      <div class="clue-expr">${c.expr} = ?</div>
+      <div class="input-group">
+        <input type="text" class="clue-input" id="input-${i}" placeholder="輸入完整商" maxlength="10">
+        <button class="btn clue-btn" onclick="checkClue(${i})">驗證</button>
+      </div>
+      <div class="clue-result" id="result-${i}"></div>
+    </div>
+  `).join("");
+}
+
+/* ========== 計時器 ========== */
+function startTimer() {
+  if (timerId) clearInterval(timerId);
+  timerId = setInterval(() => {
+    timeLeft--;
+    updateHUD();
+    if (timeLeft <= 0) {
+      clearInterval(timerId);
+      endGame(false);
+    }
+  }, 1000);
+}
+
+function formatTime(sec) {
+  const m = Math.floor(sec / 60).toString().padStart(2, "0");
+  const s = (sec % 60).toString().padStart(2, "0");
+  return `${m}:${s}`;
+}
+
+function updateHUD() {
+  document.getElementById("timer").textContent = formatTime(timeLeft);
+  document.getElementById("progress").textContent = `${solvedCount} / 4`;
+  document.getElementById("mistakes").textContent = mistakes;
+  const t = document.getElementById("timer");
+  t.parentElement.className = "stat " + (timeLeft <= 60 ? "danger" : timeLeft <= 120 ? "warn" : "");
+}
+
+/* ========== 驗證線索 ========== */
+function checkClue(idx) {
+  if (solvedFlags[idx]) return;
+  const c = selectedClues[idx];
+  const input = document.getElementById(`input-${idx}`);
+  const val = input.value.trim();
+  const num = Number(val);
+
+  if (val === "" || isNaN(num)) {
+    showResult(idx, "請輸入數字", false);
+    return;
+  }
+
+  if (Math.abs(num - c.answer) < 1e-6) {
+    solvedFlags[idx] = true;
+    solvedCount++;
+    input.disabled = true;
+    document.getElementById(`tag-${idx}`).classList.add("solved");
+    document.getElementById(`badge-${idx}`).textContent = c.digit;
+    document.getElementById(`badge-${idx}`).parentElement.closest(".clue-card").classList.add("solved");
+    document.querySelector(`#clue-${c.expr.replace(/[^a-zA-Z0-9]/g, '_')}-${idx} .clue-btn`).style.display = "none";
+    showResult(idx, `正確！密碼第 ${idx + 1} 位是 <strong>${c.digit}</strong>`, true);
+    updateHUD();
+
+    if (solvedCount === selectedClues.length) {
+      document.getElementById("game-msg").innerHTML =
+        '<span style="color:' + getComputedStyle(document.documentElement).getPropertyValue("--success") + ';">✅ 四條線索皆已解開！請前往保險箱輸入密碼。</span>';
+    }
+  } else {
+    mistakes++;
+    updateHUD();
+    showResult(idx, "不正確，請再算一次", false);
+    document.getElementById(`clue-${c.expr.replace(/[^a-zA-Z0-9]/g, '_')}-${idx}`).classList.add("wrong");
+    setTimeout(() => document.getElementById(`clue-${c.expr.replace(/[^a-zA-Z0-9]/g, '_')}-${idx}`).classList.remove("wrong"), 400);
+    timeLeft = Math.max(0, timeLeft - 15);
+    updateHUD();
+  }
+}
+
+function showResult(idx, text, ok) {
+  const el = document.getElementById(`result-${idx}`);
+  el.innerHTML = text;
+  const successColor = getComputedStyle(document.documentElement).getPropertyValue("--success").trim() || "#4ade80";
+  const dangerColor = getComputedStyle(document.documentElement).getPropertyValue("--danger").trim() || "#f87171";
+  el.style.color = ok ? successColor : dangerColor;
+}
+
+/* ========== 頁面切換（可往返）========== */
+function goToSafe() {
+  document.getElementById("screen-game").classList.remove("active");
+  document.getElementById("screen-safe").classList.add("active");
+  // 計時器持續運行，不重置
+}
+
+function backToGame() {
+  document.getElementById("screen-safe").classList.remove("active");
+  document.getElementById("screen-game").classList.add("active");
+}
+
+function backToStart() {
+  if (confirm("回到開始畫面將重新開始遊戲，確定嗎？")) {
+    clearInterval(timerId);
+    document.getElementById("screen-game").classList.remove("active");
+    document.getElementById("screen-start").classList.add("active");
+  }
+}
+
+/* ========== 保險箱 ========== */
+function moveSafeFocus(current, nextId) {
+  if (current.value !== "") {
+    const next = document.getElementById(`safe-${nextId}`);
+    if (next) next.focus();
+  }
+}
+
+function handleSafeKeydown(e, current, nextId) {
+  if (e.key === "Backspace" && current.value === "") {
+    const prevId = parseInt(current.id.replace("safe-", "")) - 1;
+    if (prevId >= 1) document.getElementById(`safe-${prevId}`).focus();
+  }
+}
+
+function checkSafe() {
+  const code = [1,2,3,4].map(i => document.getElementById(`safe-${i}`).value).join("");
+  const msg = document.getElementById("safe-msg");
+
+  if (code === password) {
+    clearInterval(timerId);
+    const used = Math.floor((Date.now() - startTime) / 1000);
+    document.getElementById("win-time").textContent = formatTime(used);
+    document.getElementById("win-mistakes").textContent = mistakes;
+    document.getElementById("win-text").innerHTML = `經過盤查，保險箱內找到盜贓與兇手名單，<br>真兇是 <strong>${CULPRIT}</strong>！`;
+    document.getElementById("screen-safe").classList.remove("active");
+    document.getElementById("screen-win").classList.add("active");
+  } else {
+    msg.textContent = "密碼錯誤，保險箱沒有反應…";
+    msg.style.color = "#f87171";
+    mistakes++;
+    updateHUD();
+    timeLeft = Math.max(0, timeLeft - 20);
+    setTimeout(() => { msg.textContent = ""; }, 1500);
+  }
+}
+
+/* ========== 結束 ========== */
+function endGame(win) {
+  clearInterval(timerId);
+  if (!win) {
+    document.getElementById("screen-game").classList.remove("active");
+    document.getElementById("screen-safe").classList.remove("active");
+    document.getElementById("screen-lose").classList.add("active");
+    document.getElementById("lose-text").innerHTML = `時間到，盜賊乘亂逃逸。<br>本局正確密碼是：<strong>${password}</strong>，真兇是 ${CULPRIT}。`;
+  }
+}
+</script>
+
+</body>
+</html>
